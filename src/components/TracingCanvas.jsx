@@ -5,6 +5,7 @@ export default function TracingCanvas({ letter, fontSize = 120, lang = 'telugu' 
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const lastPos = useRef(null);
+  const activeTouchId = useRef(null);
   const cssSize = useRef({ w: 0, h: 0 });
   const [cleared, setCleared] = useState(false);
 
@@ -67,7 +68,13 @@ export default function TracingCanvas({ letter, fontSize = 120, lang = 'telugu' 
   const getPos = (e) => {
     const canvas = canvasRef.current;
     const rect = canvas.getBoundingClientRect();
-    const src = e.touches ? e.touches[0] : e;
+    let src = e;
+    if (e.touches) {
+      src = activeTouchId.current !== null
+        ? Array.from(e.touches).find((t) => t.identifier === activeTouchId.current)
+        : e.touches[0];
+      if (!src) return null;
+    }
     return {
       x: src.clientX - rect.left,
       y: src.clientY - rect.top,
@@ -76,7 +83,10 @@ export default function TracingCanvas({ letter, fontSize = 120, lang = 'telugu' 
 
   const startDraw = (e) => {
     e.preventDefault();
+    // 2nd finger down (palm/accidental touch): ignore, don't start a new stroke
+    if (e.touches && e.touches.length > 1) return;
     drawing.current = true;
+    activeTouchId.current = e.touches ? e.touches[0].identifier : null;
     lastPos.current = getPos(e);
     setCleared(false);
   };
@@ -84,9 +94,17 @@ export default function TracingCanvas({ letter, fontSize = 120, lang = 'telugu' 
   const draw = (e) => {
     e.preventDefault();
     if (!drawing.current) return;
+    // 2nd finger landed mid-stroke: stop, don't jump the line to it
+    if (e.touches && e.touches.length > 1) {
+      drawing.current = false;
+      lastPos.current = null;
+      activeTouchId.current = null;
+      return;
+    }
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const pos = getPos(e);
+    if (!pos || !lastPos.current) return;
 
     ctx.beginPath();
     ctx.moveTo(lastPos.current.x, lastPos.current.y);
@@ -104,6 +122,7 @@ export default function TracingCanvas({ letter, fontSize = 120, lang = 'telugu' 
     e.preventDefault();
     drawing.current = false;
     lastPos.current = null;
+    activeTouchId.current = null;
   };
 
   const clearCanvas = () => {
@@ -116,8 +135,8 @@ export default function TracingCanvas({ letter, fontSize = 120, lang = 'telugu' 
     <div className="flex flex-col items-center gap-4 w-full">
       <canvas
         ref={canvasRef}
-        className="w-full rounded-3xl border-2 border-indigo-200 bg-white cursor-crosshair touch-none shadow-inner"
-        style={{ aspectRatio: '1 / 1' }}
+        className="w-full rounded-3xl border-2 border-indigo-200 bg-white cursor-crosshair touch-none select-none shadow-inner"
+        style={{ aspectRatio: '1 / 1', WebkitTouchCallout: 'none', WebkitUserSelect: 'none' }}
         onMouseDown={startDraw}
         onMouseMove={draw}
         onMouseUp={stopDraw}
@@ -125,10 +144,12 @@ export default function TracingCanvas({ letter, fontSize = 120, lang = 'telugu' 
         onTouchStart={startDraw}
         onTouchMove={draw}
         onTouchEnd={stopDraw}
+        onTouchCancel={stopDraw}
+        onContextMenu={(e) => e.preventDefault()}
       />
       <button
         onClick={clearCanvas}
-        className={`px-6 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-95
+        className={`px-8 py-3.5 min-h-[48px] rounded-xl text-base font-semibold transition-all active:scale-95
           ${cleared
             ? 'bg-green-100 text-green-700'
             : 'bg-stone-100 text-stone-600 hover:bg-stone-200'

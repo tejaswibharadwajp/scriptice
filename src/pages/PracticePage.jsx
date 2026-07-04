@@ -38,7 +38,13 @@ export default function PracticePage() {
     <div className="min-h-screen bg-gradient-to-b from-indigo-50 to-white flex flex-col">
       {/* Header */}
       <div className="sticky top-0 bg-white/90 backdrop-blur border-b border-stone-100 px-4 py-3 flex items-center gap-3 z-10">
-        <Link to={-1} className="text-indigo-600 text-xl leading-none">←</Link>
+        <Link
+          to={-1}
+          aria-label="Back"
+          className="flex items-center justify-center w-11 h-11 -ml-2 rounded-full text-indigo-600 text-2xl leading-none active:bg-indigo-50 shrink-0"
+        >
+          ←
+        </Link>
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <span
             className="text-3xl font-bold leading-none select-none shrink-0"
