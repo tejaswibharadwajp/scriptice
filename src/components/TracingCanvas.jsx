@@ -36,12 +36,19 @@ export default function TracingCanvas({ letter, fontSize = 120, lang = 'telugu' 
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // ghost letter centered in CSS space
+    // ghost letter centered in CSS space — use ink bounding box, not font
+    // metrics, since Telugu glyphs have uneven ascent/descent that throws
+    // 'middle' baseline centering off visually
     ctx.font = `${fontSize}px ${fontFamily}`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
     ctx.fillStyle = 'rgba(99, 102, 241, 0.15)';
-    ctx.fillText(letter, w / 2, h / 2);
+    const metrics = ctx.measureText(letter);
+    const inkWidth = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
+    const inkHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
+    const x = (w - inkWidth) / 2 + metrics.actualBoundingBoxLeft;
+    const y = (h - inkHeight) / 2 + metrics.actualBoundingBoxAscent;
+    ctx.fillText(letter, x, y);
   }, [letter, fontSize, fontFamily]);
 
   useEffect(() => {
